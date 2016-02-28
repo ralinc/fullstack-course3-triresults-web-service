@@ -50,8 +50,8 @@ module Test_utils
     # delete from bootstrap!!
     def init_complete_race
         clear_all_collections
-        init_race1
-        init_racer1
+        init_race
+        init_racer
         race = Race.first
         racers = Racer.all.to_a
         (0..[racers.length, 5].min).each { |r|
@@ -81,16 +81,33 @@ module Test_utils
             end
             e.touch
         }
-        db = Mongoid.default_client.database 
-        system("mongoexport --db=#{db.name} --collection=races -o spec/data/races.json")
-        system("mongoexport --db=#{db.name} --collection=racers -o spec/data/racers.json")
-        system("mongoexport --db=#{db.name} --collection=results -o spec/data/results.json")        
+        #db = Mongoid.default_client.database 
+        #system("mongoexport --db=#{db.name} --collection=races -o spec/data/races.json")
+        #system("mongoexport --db=#{db.name} --collection=racers -o spec/data/racers.json")
+        #system("mongoexport --db=#{db.name} --collection=results -o spec/data/results.json")        
         race.id
     end
 
     def init_results_from_file
         db = Mongoid.default_client.database
         #system("mongoimport --db=#{db.name} --collection=results --drop --quiet spec/data/results.json")
+        db[:results].find.delete_many
+        File.open("./spec/data/results.json","r").each_line do |line|
+          entrant=JSON.parse(line)
+          entrant["_id"]=BSON::ObjectId.from_string(entrant["_id"]["$oid"])
+          entrant["created_at"]=DateTime.xmlschema(entrant["created_at"]["$date"])
+          entrant["updated_at"]=DateTime.xmlschema(entrant["updated_at"]["$date"])
+          entrant["racer"]["racer_id"]=BSON::ObjectId.from_string(entrant["racer"]["racer_id"]["$oid"])
+          entrant["racer"]["_id"]=BSON::ObjectId.from_string(entrant["racer"]["_id"]["$oid"])
+          entrant["race"]["_id"]=BSON::ObjectId.from_string(entrant["race"]["_id"]["$oid"])
+          entrant["race"]["date"]=DateTime.xmlschema(entrant["race"]["date"]["$date"])
+          db[:results].insert_one(entrant)
+        end
+    end
+
+    def init_races_from_file
+        db = Mongoid.default_client.database
+        #system("mongoimport --db=#{db.name} --collection=races --drop --quiet spec/data/races.json")
         db[:races].find.delete_many
         File.open("./spec/data/races.json","r").each_line do |line|
           race=JSON.parse(line)
@@ -103,34 +120,17 @@ module Test_utils
           end
           db[:races].insert_one(race)
         end
-    end
+    end   
 
-    def init_races_from_file
+    def init_racers_from_file
         db = Mongoid.default_client.database
-        #system("mongoimport --db=#{db.name} --collection=races --drop --quiet spec/data/races.json")
+        #system("mongoimport --db=#{db.name} --collection=racers --drop --quiet spec/data/racers.json")
         db[:racers].find.delete_many
         File.open("./spec/data/racers.json","r").each_line do |line|
           racer=JSON.parse(line)
           racer["_id"]=BSON::ObjectId.from_string(racer["_id"]["$oid"])
           racer["info"]["racer_id"]=BSON::ObjectId.from_string(racer["info"]["racer_id"]["$oid"])
           db[:racers].insert_one(racer)
-        end
-    end   
-
-    def init_racers_from_file
-        db = Mongoid.default_client.database
-        #system("mongoimport --db=#{db.name} --collection=racers --drop --quiet spec/data/racers.json")
-        db[:results].find.delete_many
-        File.open("./spec/data/results.json","r").each_line do |line|
-          entrant=JSON.parse(line)
-          entrant["_id"]=BSON::ObjectId.from_string(entrant["_id"]["$oid"])
-          entrant["created_at"]=DateTime.xmlschema(entrant["created_at"]["$date"])
-          entrant["updated_at"]=DateTime.xmlschema(entrant["updated_at"]["$date"])
-          entrant["racer"]["racer_id"]=BSON::ObjectId.from_string(entrant["racer"]["racer_id"]["$oid"])
-          entrant["racer"]["_id"]=BSON::ObjectId.from_string(entrant["racer"]["_id"]["$oid"])
-          entrant["race"]["_id"]=BSON::ObjectId.from_string(entrant["race"]["_id"]["$oid"])
-          entrant["race"]["date"]=DateTime.xmlschema(entrant["race"]["date"]["$date"])
-          db[:results].insert_one(entrant)
         end
     end
 
